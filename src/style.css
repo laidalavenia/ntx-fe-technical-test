@@ -3,6 +3,9 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Must be layered: unlayered CSS beats Tailwind's @layer utilities, so an
+   unlayered `.maplibregl-map { position: relative }` would override `absolute`. */
+@import "maplibre-gl/dist/maplibre-gl.css" layer(components);
 
 @custom-variant dark (&:is(.dark *));
 

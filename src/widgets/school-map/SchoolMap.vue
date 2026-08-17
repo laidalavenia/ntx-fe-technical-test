@@ -9,6 +9,7 @@ import ErrorState from "@/shared/ui/ErrorState.vue";
 import { Card } from "@/shared/ui/card";
 
 const mapContainer = ref<HTMLDivElement | null>(null);
+const styleLoaded = ref(false);
 let map: maplibregl.Map | null = null;
 
 const { schools, loading, error } = useSchools();
@@ -70,7 +71,13 @@ function renderSchools(list: School[]) {
       type: "symbol",
       source: "schools",
       filter: ["has", "point_count"],
-      layout: { "text-field": "{point_count_abbreviated}", "text-size": 12 },
+      layout: {
+        "text-field": "{point_count_abbreviated}",
+        "text-size": 12,
+        // The style's glyph server only has Noto; the spec default (Open Sans) 404s
+        // and the count labels would silently disappear.
+        "text-font": ["Noto Sans Bold"],
+      },
       paint: { "text-color": "#ffffff" },
     });
     // Single (unclustered) points
@@ -158,21 +165,20 @@ function renderSchools(list: School[]) {
 onMounted(() => {
   map = new maplibregl.Map({
     container: mapContainer.value as HTMLDivElement,
-    style: "https://demotiles.maplibre.org/style.json", // free vector style, no API key
+    style: "https://tiles.openfreemap.org/styles/liberty", // free vector basemap, no API key
     center: [118, -2], // Indonesia
     zoom: 4,
   });
   map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-  // If data already loaded before map is ready, render on load
   map.on("load", () => {
-    if (schools.value && schools.value.length) renderSchools(schools.value);
+    styleLoaded.value = true;
   });
 });
 
-// Re-render whenever data changes (map may load before/after fetch)
-watch(schools, (list) => {
-  if (map && map.isStyleLoaded() && list) renderSchools(list);
+// Data and style load in either order, so render once both are ready.
+watch([schools, styleLoaded], ([list, loaded]) => {
+  if (loaded && list && list.length) renderSchools(list);
 });
 
 onBeforeUnmount(() => {

@@ -21,21 +21,24 @@ export function useAnimeSearch() {
   const currentKeyword = ref("");
   const currentPage = ref(1);
 
-  // Request cancellation guard (Bonus 2): only the latest call may write state
   let requestId = 0;
 
   async function fetchPage(keyword: string, page: number, append: boolean) {
     const myId = ++requestId;
     loading.value = true;
     error.value = false;
+    const trimmed = keyword.trim();
+    const hasKeyword = trimmed.length > 0;
     try {
       const res = await gqlClient.request<GqlResponse>(SEARCH_ANIME, {
-        search: keyword,
+        search: hasKeyword ? trimmed : undefined, // omit -> return all
         page,
         perPage: PER_PAGE,
+        sort: hasKeyword
+          ? ["SEARCH_MATCH", "POPULARITY_DESC"]
+          : ["POPULARITY_DESC"],
       });
-      // Stale response guard: ignore if a newer request started
-      if (myId !== requestId) return;
+      if (myId !== requestId) return; // stale guard
       const items = mapAnime(res.Page.media);
       data.value = append ? data.value.concat(items) : items;
       hasNextPage.value = res.Page.pageInfo.hasNextPage;
@@ -48,13 +51,11 @@ export function useAnimeSearch() {
     }
   }
 
-  // New search: reset to page 1, replace data
   function searchAnime(keyword: string) {
     currentKeyword.value = keyword;
     return fetchPage(keyword, 1, false);
   }
 
-  // Load next page: append to existing data
   function loadMore() {
     if (!hasNextPage.value || loading.value) return;
     return fetchPage(currentKeyword.value, currentPage.value + 1, true);

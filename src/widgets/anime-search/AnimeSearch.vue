@@ -15,15 +15,18 @@ const debounced = useDebounce(keyword, 500);
 const { data, loading, error, hasNextPage, searchAnime, loadMore } =
   useAnimeSearch();
 
-// Trigger search whenever the debounced keyword changes
-watch(debounced, (val) => {
-  if (val.trim()) searchAnime(val.trim());
-});
+// Load popular on mount, re-search on change, reload popular when cleared
+watch(
+  debounced,
+  (val) => {
+    searchAnime(val.trim());
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl p-4">
-    <!-- Search input with leading icon -->
     <div class="relative mb-4">
       <Search
         class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -31,7 +34,6 @@ watch(debounced, (val) => {
       <Input v-model="keyword" placeholder="Search anime..." class="pl-9" />
     </div>
 
-    <!-- Skeleton grid while first page loads -->
     <div
       v-if="loading && data.length === 0"
       class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4"
@@ -41,7 +43,7 @@ watch(debounced, (val) => {
 
     <ErrorState v-else-if="error" text="Failed to fetch anime data." />
     <EmptyState
-      v-else-if="!loading && keyword && data.length === 0"
+      v-else-if="!loading && keyword.trim() && data.length === 0"
       text="Anime not found."
     />
 
